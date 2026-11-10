@@ -16,6 +16,19 @@ impl Folder {
     pub fn slug(&self) -> String {
         slugify(&self.name)
     }
+
+    /// Existence is checked when a folder is added, not on every load/update, so an
+    /// unmounted or deleted folder only 404s instead of breaking startup and admin edits.
+    pub fn check_exists(&self) -> Result<(), ConfigError> {
+        if self.path.is_dir() {
+            Ok(())
+        } else {
+            Err(ConfigError::Invalid(format!(
+                "folders: path '{}' is not an existing directory",
+                self.path.display()
+            )))
+        }
+    }
 }
 
 fn default_listen() -> String {
@@ -105,9 +118,6 @@ impl Config {
             }
             if !f.path.is_absolute() {
                 return inv(format!("folders: path '{}' must be absolute", f.path.display()));
-            }
-            if !f.path.is_dir() {
-                return inv(format!("folders: path '{}' is not an existing directory", f.path.display()));
             }
         }
         Ok(())
@@ -299,11 +309,26 @@ mod tests {
     }
 
     #[test]
-    fn validate_rejects_missing_folder() {
+    fn missing_folder_is_not_a_config_error() {
+        // An unmounted/deleted folder must not stop startup or block unrelated admin changes.
         let d = tempfile::tempdir().unwrap();
         let mut c = base_cfg(d.path());
         c.folders.push(Folder { name: "X".into(), path: d.path().join("nope") });
-        assert!(c.validate().unwrap_err().to_string().contains("folders"));
+        assert!(c.validate().is_ok());
+        let e = c.folders[1].check_exists().unwrap_err().to_string();
+        assert!(e.contains("folders"), "{e}");
+        assert!(c.folders[0].check_exists().is_ok());
+    }
+
+    #[test]
+    fn update_works_after_folder_disappears() {
+        let d = tempfile::tempdir().unwrap();
+        let c = base_cfg(d.path());
+        let p = write_cfg(d.path(), &toml::to_string(&c).unwrap());
+        let mut s = ConfigStore::load_with_env(&p, &env(&[])).unwrap();
+        fs::remove_dir_all(d.path().join("docs")).unwrap();
+        assert!(ConfigStore::load_with_env(&p, &env(&[])).is_ok());
+        s.update(|c| c.allowed_ips.push("9.9.9.9".into())).unwrap();
     }
 
     #[test]

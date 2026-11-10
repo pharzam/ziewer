@@ -84,7 +84,15 @@ fn header(name: &'static str, value: &'static str) -> SetResponseHeaderLayer<Hea
 }
 
 pub async fn serve(state: AppState) -> io::Result<()> {
-    let listen = state.config.read().unwrap().effective().listen.clone();
+    let listen = {
+        let store = state.config.read().unwrap();
+        for f in &store.effective().folders {
+            if let Err(e) = f.check_exists() {
+                tracing::warn!("{e} (folder '{}' will return 404 until it exists)", f.name);
+            }
+        }
+        store.effective().listen.clone()
+    };
     let listener = tokio::net::TcpListener::bind(&listen).await?;
     tracing::info!("ziewer listening on http://{}", listener.local_addr()?);
     axum::serve(listener, router(state).into_make_service_with_connect_info::<SocketAddr>()).await

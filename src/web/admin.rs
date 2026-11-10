@@ -186,6 +186,9 @@ pub async fn add_folder(State(state): State<AppState>, Form(form): Form<FolderFo
     if folder.name.is_empty() || form.path.trim().is_empty() {
         return bad(&state, "Folder name and path are required.");
     }
+    if let Err(ConfigError::Invalid(m)) = folder.check_exists() {
+        return bad(&state, &m);
+    }
     match apply(&state, |c| c.folders.push(folder.clone())) {
         Ok(()) => done(),
         Err(r) => r,
