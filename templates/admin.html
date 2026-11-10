@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="admin">
+<article class="markdown-body card">
+  <h1>Admin</h1>
+  <p class="muted">Admin IP: <code>{{ admin_ip }}</code> (change it in the config file)</p>
+  {%- if error %}
+  <div class="notice error" role="alert">{{ error }}</div>
+  {%- endif %}
+
+  <section>
+    <h2>Pending access requests</h2>
+    {%- if requests %}
+    <table>
+      <thead><tr><th>IP</th><th>Note</th><th>User agent</th><th>Requested</th><th></th></tr></thead>
+      <tbody>
+      {%- for r in requests %}
+        <tr>
+          <td><code>{{ r.ip }}</code></td>
+          <td>{{ r.note }}</td>
+          <td class="muted">{{ r.user_agent }}</td>
+          <td>{{ r.requested_at }}</td>
+          <td>
+            <form class="inline" method="post" action="/admin/requests/{{ r.ip }}/approve">
+              <button class="primary" type="submit"{% if locks.allowed_ips %} disabled{% endif %}>Approve</button>
+            </form>
+            <form class="inline" method="post" action="/admin/requests/{{ r.ip }}/deny">
+              <button class="danger" type="submit">Deny</button>
+            </form>
+          </td>
+        </tr>
+      {%- endfor %}
+      </tbody>
+    </table>
+    {%- else %}
+    <p class="muted">No pending requests.</p>
+    {%- endif %}
+  </section>
+
+  <section>
+    <h2>Allowed IPs</h2>
+    {%- if locks.allowed_ips %}<p class="muted">Set by environment (ZIEWER_ALLOWED_IPS), read-only here.</p>{% endif %}
+    <table>
+      <tbody>
+      {%- for ip in allowed_ips %}
+        <tr>
+          <td><code>{{ ip }}</code></td>
+          <td>
+            <form class="inline" method="post" action="/admin/ips/delete">
+              <input type="hidden" name="ip" value="{{ ip }}">
+              <button class="danger" type="submit"{% if locks.allowed_ips %} disabled{% endif %}>Remove</button>
+            </form>
+          </td>
+        </tr>
+      {%- else %}
+        <tr><td class="muted">No allowed IPs yet.</td></tr>
+      {%- endfor %}
+      </tbody>
+    </table>
+    <form class="row-form" method="post" action="/admin/ips">
+      <input type="text" name="ip" placeholder="192.168.1.20 or 10.0.0.0/24" required{% if locks.allowed_ips %} disabled{% endif %}>
+      <button class="primary" type="submit"{% if locks.allowed_ips %} disabled{% endif %}>Add IP</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>Folders</h2>
+    {%- if locks.folders %}<p class="muted">Set by environment (ZIEWER_FOLDERS), read-only here.</p>{% endif %}
+    <table>
+      <thead><tr><th>Name</th><th>Path</th><th>URL</th><th></th></tr></thead>
+      <tbody>
+      {%- for f in admin_folders %}
+        <tr>
+          <td>{{ f.name }}</td>
+          <td><code>{{ f.path }}</code></td>
+          <td><a href="/f/{{ f.slug }}/">/f/{{ f.slug }}/</a></td>
+          <td>
+            <form class="inline" method="post" action="/admin/folders/delete">
+              <input type="hidden" name="name" value="{{ f.name }}">
+              <button class="danger" type="submit"{% if locks.folders %} disabled{% endif %}>Remove</button>
+            </form>
+          </td>
+        </tr>
+      {%- else %}
+        <tr><td class="muted" colspan="4">No folders configured.</td></tr>
+      {%- endfor %}
+      </tbody>
+    </table>
+    <form class="row-form" method="post" action="/admin/folders">
+      <input type="text" name="name" placeholder="Name (menu label)" required{% if locks.folders %} disabled{% endif %}>
+      <input type="text" name="path" placeholder="/absolute/path/to/folder" required{% if locks.folders %} disabled{% endif %}>
+      <button class="primary" type="submit"{% if locks.folders %} disabled{% endif %}>Add folder</button>
+    </form>
+  </section>
+</article>
+</div>
+{% endblock %}

@@ -1,5 +1,6 @@
 //! HTTP layer: shared state, router, middleware.
 
+mod admin;
 mod assets;
 mod gate;
 mod view;
@@ -63,6 +64,13 @@ pub fn router(state: AppState) -> Router {
         .route("/f/{slug}/{*path}", get(view::folder_path))
         .route("/_assets/{*file}", get(assets::asset))
         .route("/request-access", post(gate::request_access))
+        .route("/admin", get(admin::dashboard))
+        .route("/admin/requests/{ip}/approve", post(admin::approve))
+        .route("/admin/requests/{ip}/deny", post(admin::deny))
+        .route("/admin/ips", post(admin::add_ip))
+        .route("/admin/ips/delete", post(admin::delete_ip))
+        .route("/admin/folders", post(admin::add_folder))
+        .route("/admin/folders/delete", post(admin::delete_folder))
         .fallback(not_found)
         .layer(middleware::from_fn_with_state(state.clone(), access_mw))
         .layer(header("x-content-type-options", "nosniff"))

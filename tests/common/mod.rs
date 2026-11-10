@@ -30,6 +30,10 @@ impl Fixture {
 }
 
 pub fn fixture() -> Fixture {
+    fixture_with_env(&[])
+}
+
+pub fn fixture_with_env(env: &[(&str, &str)]) -> Fixture {
     let dir = tempfile::tempdir().unwrap();
     let r = dir.path();
     let docs = r.join("docs");
@@ -55,7 +59,10 @@ pub fn fixture() -> Fixture {
     );
     let path = r.join("ziewer.toml");
     fs::write(&path, cfg).unwrap();
-    let store = ConfigStore::load_with_env(&path, &Default::default()).unwrap();
+    let store = ConfigStore::load_with_env(
+        &path,
+        &env.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect(),
+    ).unwrap();
     let state = build_state(store).unwrap();
     Fixture { dir, state }
 }
