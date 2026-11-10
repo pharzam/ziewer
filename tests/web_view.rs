@@ -59,15 +59,32 @@ async fn unicode_and_space_path() {
 }
 
 #[tokio::test]
-async fn html_is_iframed_and_raw_injected() {
+async fn html_opens_as_standalone_page() {
     let f = fixture();
-    let (s, _, b) = get(&f.state, "/f/docs/page.html", ALLOWED).await;
-    assert_eq!(s, StatusCode::OK);
-    assert!(b.contains("html-frame"));
-    let (s, h, b) = get(&f.state, "/f/docs/page.html?raw=1", ALLOWED).await;
+    let (s, h, b) = get(&f.state, "/f/docs/page.html", ALLOWED).await;
     assert_eq!(s, StatusCode::OK);
     assert!(h["content-type"].to_str().unwrap().starts_with("text/html"));
+    assert!(b.starts_with("<html><body><div class=\"mermaid\">"), "not the file itself: {b}");
+    assert!(!b.contains("topbar") && !b.contains("html-frame"), "wrapped in the viewer");
     assert!(b.find("mermaid.min.js").unwrap() < b.find("</body>").unwrap());
+}
+
+#[tokio::test]
+async fn html_links_in_tree_point_to_file() {
+    let f = fixture();
+    let (_, _, b) = get(&f.state, "/f/docs/", ALLOWED).await;
+    assert!(b.contains("href=\"/f/docs/page.html\""));
+}
+
+#[tokio::test]
+async fn directory_with_only_index_html_serves_it() {
+    let f = fixture();
+    let site = f.dir.path().join("docs/site");
+    std::fs::create_dir_all(&site).unwrap();
+    std::fs::write(site.join("index.html"), "<html><body>SITE</body></html>").unwrap();
+    let (s, _, b) = get(&f.state, "/f/docs/site/", ALLOWED).await;
+    assert_eq!(s, StatusCode::OK);
+    assert!(b.starts_with("<html><body>SITE"), "{b}");
 }
 
 #[tokio::test]
@@ -122,7 +139,7 @@ async fn security_headers_present() {
 #[tokio::test]
 async fn full_width_layout_with_file_drawer() {
     let f = fixture();
-    let (_, _, b) = get(&f.state, "/f/docs/page.html", ALLOWED).await;
+    let (_, _, b) = get(&f.state, "/f/docs/README.md", ALLOWED).await;
     assert!(!b.contains("with-sidebar"), "sidebar layout still used");
     assert!(b.contains("id=\"files-toggle\""), "no Files button");
     assert!(b.contains("class=\"drawer\""), "no file drawer");

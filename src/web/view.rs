@@ -99,7 +99,7 @@ enum Outcome {
     Redirect(String),
     Raw(PathBuf, String),
     Listing { tree: Vec<NavNode>, entries: Vec<NavNode>, title: String },
-    Page { file: PathBuf, root: PathBuf, tree: Vec<NavNode>, title: String },
+    Page { file: PathBuf, tree: Vec<NavNode>, title: String },
 }
 
 fn resolve_outcome(root: Option<PathBuf>, slug: &str, rel: &str, trailing: bool, raw: bool) -> Outcome {
@@ -113,18 +113,20 @@ fn resolve_outcome(root: Option<PathBuf>, slug: &str, rel: &str, trailing: bool,
         let tree = nav(slug, build_tree(&root), rel);
         let title = if rel.is_empty() { slug.to_string() } else { rel.to_string() };
         return match dir_index(&target) {
-            Some(file) => Outcome::Page { file, root, tree, title },
+            Some(file) if ext_lower(&file) == "html" => Outcome::Raw(file, "html".into()),
+            Some(file) => Outcome::Page { file, tree, title },
             None => Outcome::Listing { entries: nav(slug, list_dir(&root, &target), ""), tree, title },
         };
     }
 
     let ext = ext_lower(&target);
-    if raw || (ext != "md" && ext != "html") {
+    // HTML files open as themselves (full page, own styles/scripts); only Markdown is wrapped.
+    if raw || ext != "md" {
         return Outcome::Raw(target, ext);
     }
     let tree = nav(slug, build_tree(&root), rel);
     let title = target.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-    Outcome::Page { file: target, root, tree, title }
+    Outcome::Page { file: target, tree, title }
 }
 
 async fn view(state: &AppState, role: Role, slug: &str, rel: &str, trailing: bool, raw: bool) -> Response {
@@ -141,26 +143,20 @@ async fn view(state: &AppState, role: Role, slug: &str, rel: &str, trailing: boo
             let ctx = context! { mode => "listing", title, tree, entries, ..base_ctx(state, role, Some(slug)) };
             render(state, "view.html", ctx)
         }
-        Outcome::Page { file, root, tree, title } => page(state, role, slug, &file, &root, tree, &title).await,
+        Outcome::Page { file, tree, title } => page(state, role, slug, &file, tree, &title).await,
     }
 }
 
-/// Render a `.md` or `.html` file inside the layout.
+/// Render a Markdown file inside the layout.
 async fn page(
     state: &AppState,
     role: Role,
     slug: &str,
     file: &FsPath,
-    root: &FsPath,
     tree: Vec<NavNode>,
     title: &str,
 ) -> Response {
     let base = base_ctx(state, role, Some(slug));
-    if ext_lower(file) == "html" {
-        let rel = file.strip_prefix(root).unwrap_or(file).to_string_lossy().replace('\\', "/");
-        let iframe_src = format!("{}?raw=1", href(slug, &rel, false));
-        return render(state, "view.html", context! { mode => "html", title, tree, iframe_src, ..base });
-    }
     match tokio::fs::read(file).await {
         Ok(bytes) => {
             let content = markdown_to_html(&String::from_utf8_lossy(&bytes));

@@ -2,8 +2,6 @@
 {% block content %}
 {%- if mode == "markdown" %}
 <article class="markdown-body card">{{ content|safe }}</article>
-{%- elif mode == "html" %}
-<iframe class="html-frame" src="{{ iframe_src }}" title="{{ title }}"></iframe>
 {%- else %}
 <article class="markdown-body card">
   <h2>{{ title }}</h2>

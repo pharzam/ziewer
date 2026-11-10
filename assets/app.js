@@ -3,23 +3,6 @@
   if (window.mermaid) {
     window.mermaid.initialize({ startOnLoad: true, theme: dark ? 'dark' : 'default' });
   }
-  // Size embedded HTML pages to their content (same origin).
-  document.querySelectorAll('iframe.html-frame').forEach(function (frame) {
-    function fit() {
-      try {
-        var doc = frame.contentDocument;
-        if (doc && doc.documentElement) frame.style.height = (doc.documentElement.scrollHeight + 4) + 'px';
-      } catch (e) { /* cross-origin: keep default height */ }
-    }
-    frame.addEventListener('load', function () {
-      fit();
-      try {
-        if (window.ResizeObserver && frame.contentDocument.body) {
-          new ResizeObserver(fit).observe(frame.contentDocument.body);
-        }
-      } catch (e) {}
-    });
-  });
   // File drawer: toggled from the top bar; closes on backdrop click or Escape.
   var toggle = document.getElementById('files-toggle');
   var drawer = document.getElementById('files-drawer');
