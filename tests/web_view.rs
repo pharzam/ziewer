@@ -118,3 +118,13 @@ async fn security_headers_present() {
         assert_eq!(h["x-frame-options"], "SAMEORIGIN", "{p}");
     }
 }
+
+#[tokio::test]
+async fn full_width_layout_with_file_drawer() {
+    let f = fixture();
+    let (_, _, b) = get(&f.state, "/f/docs/page.html", ALLOWED).await;
+    assert!(!b.contains("with-sidebar"), "sidebar layout still used");
+    assert!(b.contains("id=\"files-toggle\""), "no Files button");
+    assert!(b.contains("class=\"drawer\""), "no file drawer");
+    assert!(b.contains("/f/docs/My%20Notes/%C3%A9.md"), "drawer lost the tree");
+}

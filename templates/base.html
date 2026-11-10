@@ -9,6 +9,9 @@
 </head>
 <body>
 <header class="topbar">
+  {%- if tree %}
+  <button id="files-toggle" class="files-toggle" type="button" aria-controls="files-drawer" aria-expanded="false">&#9776; Files</button>
+  {%- endif %}
   <a class="brand" href="/">Ziewer</a>
   <nav class="menu">
     {%- for f in folders %}
@@ -19,32 +22,28 @@
   <a class="admin-link" href="/admin">Admin</a>
   {%- endif %}
 </header>
-<div class="layout{% if tree %} with-sidebar{% endif %}">
-  {%- if tree %}
-  <aside class="sidebar">
-    <details open>
-      <summary>Files</summary>
-      <ul class="tree">
-        {%- for n in tree recursive %}
-        <li>
-          {%- if n.is_dir %}
-          <details{% if n.open %} open{% endif %}>
-            <summary>{{ n.name }}</summary>
-            <ul>{{ loop(n.children) }}</ul>
-          </details>
-          {%- else %}
-          <a href="{{ n.href }}"{% if n.active %} class="active"{% endif %}>{{ n.name }}</a>
-          {%- endif %}
-        </li>
-        {%- endfor %}
-      </ul>
-    </details>
-  </aside>
-  {%- endif %}
-  <main class="content">
-    {% block content %}{% endblock %}
-  </main>
-</div>
+{%- if tree %}
+<div class="drawer-backdrop" id="drawer-backdrop" hidden></div>
+<aside class="drawer" id="files-drawer" aria-label="Files" hidden>
+  <ul class="tree">
+    {%- for n in tree recursive %}
+    <li>
+      {%- if n.is_dir %}
+      <details{% if n.open %} open{% endif %}>
+        <summary>{{ n.name }}</summary>
+        <ul>{{ loop(n.children) }}</ul>
+      </details>
+      {%- else %}
+      <a href="{{ n.href }}"{% if n.active %} class="active" aria-current="page"{% endif %}>{{ n.name }}</a>
+      {%- endif %}
+    </li>
+    {%- endfor %}
+  </ul>
+</aside>
+{%- endif %}
+<main class="layout content">
+  {% block content %}{% endblock %}
+</main>
 <script src="/_assets/vendor/mermaid.min.js"></script>
 <script src="/_assets/app.js"></script>
 </body>

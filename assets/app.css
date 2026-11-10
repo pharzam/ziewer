@@ -28,10 +28,20 @@ a { color: var(--accent); }
 .menu a:hover { opacity: 1; background: rgba(255,255,255,.08); }
 .menu a.active { opacity: 1; background: rgba(255,255,255,.15); font-weight: 600; }
 .admin-link { padding: 4px 10px; border: 1px solid rgba(255,255,255,.3); border-radius: 6px; }
-.layout { display: block; max-width: 1280px; margin: 0 auto; padding: 16px; }
-.layout.with-sidebar { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 24px; }
-.sidebar { position: sticky; top: 60px; align-self: start; max-height: calc(100vh - 76px); overflow: auto; }
-.sidebar > details > summary { font-weight: 600; cursor: pointer; padding: 4px 0; color: var(--muted); }
+.layout { padding: 16px; }
+.content { min-width: 0; }
+.files-toggle {
+  background: transparent; color: var(--topbar-text); border: 1px solid rgba(255,255,255,.3);
+  padding: 4px 10px; white-space: nowrap;
+}
+.files-toggle:hover, .files-toggle[aria-expanded="true"] { background: rgba(255,255,255,.12); }
+.drawer {
+  position: fixed; top: 51px; bottom: 0; left: 0; z-index: 30; width: min(340px, 85vw);
+  overflow: auto; padding: 12px; background: var(--surface); border-right: 1px solid var(--border);
+  box-shadow: 4px 0 16px rgba(0,0,0,.18);
+}
+.drawer[hidden], .drawer-backdrop[hidden] { display: none; }
+.drawer-backdrop { position: fixed; inset: 51px 0 0 0; z-index: 20; background: rgba(0,0,0,.25); }
 .tree, .tree ul { list-style: none; margin: 0; padding-left: 14px; }
 .tree { padding-left: 0; }
 .tree li { margin: 1px 0; }
@@ -39,11 +49,9 @@ a { color: var(--accent); }
 .tree a { display: block; padding: 2px 6px; border-radius: 4px; color: var(--text); text-decoration: none; word-break: break-word; }
 .tree a:hover { background: var(--active-bg); }
 .tree a.active { background: var(--active-bg); color: var(--accent); font-weight: 600; }
-.content { min-width: 0; }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 32px; }
-.markdown-body { max-width: 980px; }
 .markdown-body pre.mermaid { background: transparent; text-align: center; }
-.html-frame { width: 100%; min-height: 70vh; border: 1px solid var(--border); border-radius: 6px; background: #fff; }
+.html-frame { display: block; width: 100%; min-height: calc(100vh - 85px); border: 1px solid var(--border); border-radius: 6px; background: #fff; }
 .listing { padding-left: 1.5em; }
 .message { max-width: 640px; margin: 48px auto; text-align: center; }
 .ip { font: 600 20px ui-monospace, SFMono-Regular, Menlo, monospace; padding: 4px 10px; border: 1px solid var(--border); border-radius: 6px; display: inline-block; }
@@ -66,9 +74,13 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .admin .row-form { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 .admin .row-form input { flex: 1 1 200px; width: auto; }
 .muted { color: var(--muted); }
+/* Right-to-left blocks (dir="auto" resolved to rtl): mirror GitHub's left-side spacing. */
+.markdown-body ul:dir(rtl), .markdown-body ol:dir(rtl) { padding-left: 0; padding-right: 2em; }
+.markdown-body blockquote:dir(rtl) {
+  border-left: 0; border-right: .25em solid var(--border); padding: 0 1em;
+}
+.markdown-body th:dir(rtl), .markdown-body td:dir(rtl) { text-align: right; }
 @media (max-width: 768px) {
-  .layout.with-sidebar { display: block; }
-  .sidebar { position: static; max-height: none; margin-bottom: 16px; }
-  .sidebar > details:not([open]) { margin-bottom: 0; }
+  .layout { padding: 8px; }
   .card { padding: 16px; }
 }
