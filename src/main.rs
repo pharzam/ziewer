@@ -17,6 +17,14 @@ struct Cli {
 enum Cmd {
     /// Run the web server in the foreground
     Serve,
+    /// Install and start as an OS service (needs root / Administrator)
+    Install,
+    /// Stop and remove the OS service
+    Uninstall,
+    /// Start the installed service
+    Start,
+    /// Stop the installed service
+    Stop,
 }
 
 fn main() -> ExitCode {
@@ -29,6 +37,10 @@ fn main() -> ExitCode {
     let cli = Cli::parse();
     let result = match cli.cmd {
         Cmd::Serve => serve(cli.config),
+        Cmd::Install => ziewer::service::install(&cli.config).map(|()| println!("ziewer service installed and started")),
+        Cmd::Uninstall => ziewer::service::uninstall().map(|()| println!("ziewer service removed")),
+        Cmd::Start => ziewer::service::start(),
+        Cmd::Stop => ziewer::service::stop(),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,
