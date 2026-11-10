@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<article class="markdown-body card message">
+  <h1>Access denied</h1>
+  <p>Your IP address is not on the allow list.</p>
+  <p>Your IP: <span class="ip">{{ ip }}</span></p>
+  {%- if phase == "sent" %}
+  <div class="notice">Request sent, waiting for admin approval.</div>
+  {%- elif phase == "pending" %}
+  <div class="notice">Your access request is pending. The admin has not approved it yet.</div>
+  {%- else %}
+  <form method="post" action="/request-access">
+    <p><label for="note">Note for the admin (optional)</label></p>
+    <p><textarea id="note" name="note" rows="3" maxlength="200" placeholder="Who are you?"></textarea></p>
+    <p><button class="primary" type="submit">Request access</button></p>
+  </form>
+  {%- endif %}
+</article>
+{% endblock %}

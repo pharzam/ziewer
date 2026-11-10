@@ -1,6 +1,7 @@
 //! HTTP layer: shared state, router, middleware.
 
 mod assets;
+mod gate;
 mod view;
 
 use crate::access::{Role, classify, client_ip};
@@ -10,7 +11,7 @@ use axum::Router;
 use axum::extract::{ConnectInfo, Request, State};
 use axum::middleware::{self, Next};
 use axum::response::{Html, IntoResponse, Response};
-use axum::routing::get;
+use axum::routing::{get, post};
 use http::{HeaderName, HeaderValue, StatusCode};
 use minijinja::{Environment, Value, context};
 use rust_embed::RustEmbed;
@@ -61,6 +62,7 @@ pub fn router(state: AppState) -> Router {
         .route("/f/{slug}/", get(view::folder_root))
         .route("/f/{slug}/{*path}", get(view::folder_path))
         .route("/_assets/{*file}", get(assets::asset))
+        .route("/request-access", post(gate::request_access))
         .fallback(not_found)
         .layer(middleware::from_fn_with_state(state.clone(), access_mw))
         .layer(header("x-content-type-options", "nosniff"))
@@ -95,6 +97,24 @@ async fn access_mw(State(state): State<AppState>, mut req: Request, next: Next) 
     };
     req.extensions_mut().insert(ClientIp(ip));
     req.extensions_mut().insert(role);
+
+    let path = req.uri().path();
+    if req.method() == http::Method::POST && gate::origin_mismatch(req.headers()) {
+        return error_page(&state, role, StatusCode::FORBIDDEN, "Bad origin", "Cross-site form submissions are not allowed.");
+    }
+    if path.starts_with("/_assets/") {
+        return next.run(req).await;
+    }
+    let is_admin_path = path == "/admin" || path.starts_with("/admin/");
+    if is_admin_path && role != Role::Admin {
+        if role == Role::Denied {
+            return gate::denied(&state, ip);
+        }
+        return error_page(&state, role, StatusCode::FORBIDDEN, "Admin only", "This page is only available to the admin.");
+    }
+    if role == Role::Denied && !(req.method() == http::Method::POST && path == "/request-access") {
+        return gate::denied(&state, ip);
+    }
     next.run(req).await
 }
 
