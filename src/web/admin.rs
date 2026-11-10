@@ -90,6 +90,7 @@ fn done() -> Response {
 }
 
 /// Apply a config change, mapping errors to a 400 admin page.
+#[allow(clippy::result_large_err)] // Err is a ready-to-return HTTP response
 fn apply(state: &AppState, f: impl Fn(&mut Config)) -> Result<(), Response> {
     let result = state.config.write().unwrap().update(f);
     result.map_err(|e| match e {
