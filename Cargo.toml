@@ -9,6 +9,7 @@ axum = "0.8"
 clap = { version = "4", features = ["derive", "env"] }
 comrak = { version = "0.59.0", features = ["syntect"] }
 dotenvy = "0.15"
+http = "1"
 ipnet = { version = "2", features = ["serde"] }
 mime_guess = "2"
 minijinja = "2"

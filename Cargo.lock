@@ -1909,6 +1909,7 @@ dependencies = [
  "clap",
  "comrak",
  "dotenvy",
+ "http",
  "http-body-util",
  "ipnet",
  "mime_guess",
