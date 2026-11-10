@@ -79,3 +79,27 @@ async fn matching_origin_ok() {
     let (s, _, _) = post_form(&f.state, "/request-access", STRANGER, "note=x", Some("http://localhost")).await;
     assert_eq!(s, StatusCode::OK);
 }
+
+#[tokio::test]
+async fn unknown_host_rejected_dns_rebinding() {
+    let f = fixture();
+    let (s, _, b) = get_with_host(&f.state, "/f/docs/", ADMIN, "evil.example:8080").await;
+    assert_eq!(s, StatusCode::MISDIRECTED_REQUEST);
+    assert!(!b.contains("Docs"));
+}
+
+#[tokio::test]
+async fn ip_literal_and_localhost_hosts_accepted() {
+    let f = fixture();
+    for h in ["localhost:8080", "192.168.1.5:8080", "[::1]:8080", "LOCALHOST"] {
+        let (s, _, _) = get_with_host(&f.state, "/f/docs/", ALLOWED, h).await;
+        assert_eq!(s, StatusCode::OK, "{h}");
+    }
+}
+
+#[tokio::test]
+async fn configured_hostname_accepted() {
+    let f = fixture_with_env(&[("ZIEWER_HOSTNAMES", "docs.example.com")]);
+    let (s, _, _) = get_with_host(&f.state, "/f/docs/", ALLOWED, "Docs.Example.com:443").await;
+    assert_eq!(s, StatusCode::OK);
+}

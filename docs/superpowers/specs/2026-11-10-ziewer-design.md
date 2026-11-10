@@ -61,7 +61,7 @@ File `ziewer.toml`. Path from `--config <path>`, else `ZIEWER_CONFIG`, else
 ```toml
 listen      = "0.0.0.0:8080"
 admin_ip    = "192.168.1.10"
-trust_proxy = false                 # true → client IP from X-Forwarded-For (first entry)
+trust_proxy = false                 # true → client IP from X-Forwarded-For (rightmost entry)
 allowed_ips = ["192.168.1.20", "10.0.0.0/24"]   # single IPs or CIDR
 
 [[folders]]
@@ -129,8 +129,8 @@ The admin page persists changes to `ziewer.toml`. Pending requests live in
 
 Every request (except `/_assets/*`) passes through middleware:
 
-1. Determine client IP: socket peer address; if `trust_proxy`, the first
-   `X-Forwarded-For` entry instead.
+1. Determine client IP: socket peer address; if `trust_proxy`, the rightmost
+   `X-Forwarded-For` entry (the one the trusted proxy appended) instead.
 2. IPv4-mapped IPv6 addresses are normalized to IPv4.
 3. Classify: equals `admin_ip` → **Admin**; matches any `allowed_ips` entry → **Allowed**;
    else **Denied**.

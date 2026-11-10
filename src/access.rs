@@ -18,13 +18,15 @@ pub fn normalize(ip: IpAddr) -> IpAddr {
     }
 }
 
+/// With `trust_proxy`, the client is the *rightmost* `X-Forwarded-For` entry: the one the
+/// trusted proxy appended. Entries to its left are client-controlled and never trusted.
 pub fn client_ip(peer: SocketAddr, headers: &http::HeaderMap, trust_proxy: bool) -> IpAddr {
     if trust_proxy {
         let forwarded = headers
             .get("x-forwarded-for")
             .and_then(|v| v.to_str().ok())
-            .and_then(|v| v.split(',').next())
-            .and_then(|first| first.trim().parse::<IpAddr>().ok());
+            .and_then(|v| v.rsplit(',').next())
+            .and_then(|last| last.trim().parse::<IpAddr>().ok());
         if let Some(ip) = forwarded {
             return normalize(ip);
         }
@@ -57,6 +59,7 @@ mod tests {
             trust_proxy: false,
             allowed_ips: vec!["192.168.1.20".into(), "10.0.0.0/24".into(), "192.168.1.10".into()],
             folders: vec![],
+            hostnames: vec![],
         }
     }
     fn ip(s: &str) -> IpAddr { s.parse().unwrap() }
@@ -79,8 +82,13 @@ mod tests {
     #[test] fn xff_ignored_without_trust() {
         assert_eq!(client_ip(peer("1.2.3.4"), &xff("5.6.7.8"), false), ip("1.2.3.4"));
     }
-    #[test] fn xff_first_entry_with_trust() {
-        assert_eq!(client_ip(peer("1.2.3.4"), &xff("5.6.7.8, 10.0.0.1"), true), ip("5.6.7.8"));
+    #[test] fn xff_rightmost_entry_with_trust() {
+        assert_eq!(client_ip(peer("1.2.3.4"), &xff("5.6.7.8, 10.0.0.1"), true), ip("10.0.0.1"));
+    }
+    #[test] fn xff_spoofed_prefix_cannot_claim_admin() {
+        // nginx $proxy_add_x_forwarded_for appends the real client IP to whatever the client sent.
+        let got = client_ip(peer("127.0.0.1"), &xff("192.168.1.10, 8.8.8.8"), true);
+        assert_eq!(classify(got, &cfg()), Role::Denied);
     }
     #[test] fn xff_garbage_falls_back_to_peer() {
         assert_eq!(client_ip(peer("1.2.3.4"), &xff("unknown"), true), ip("1.2.3.4"));

@@ -33,6 +33,9 @@ pub struct Config {
     pub allowed_ips: Vec<String>,
     #[serde(default)]
     pub folders: Vec<Folder>,
+    /// Extra host names (besides IP literals and `localhost`) the server answers to.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub hostnames: Vec<String>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -52,6 +55,7 @@ pub struct EnvLocks {
     pub trust_proxy: bool,
     pub allowed_ips: bool,
     pub folders: bool,
+    pub hostnames: bool,
 }
 
 /// Lowercase; runs of non-alphanumeric chars become a single `-`; trimmed of `-`.
@@ -109,6 +113,23 @@ impl Config {
         Ok(())
     }
 
+    /// True when `host` (a `Host` header value, port optional) names this server:
+    /// an IP literal, `localhost`, or one of `hostnames`. Guards against DNS rebinding.
+    pub fn host_allowed(&self, host: &str) -> bool {
+        let host = host.trim();
+        if host.parse::<IpAddr>().is_ok() {
+            return true;
+        }
+        let name = if let Some(rest) = host.strip_prefix('[') {
+            rest.split(']').next().unwrap_or("")
+        } else {
+            host.rsplit_once(':').map(|(h, _)| h).unwrap_or(host)
+        };
+        name.parse::<IpAddr>().is_ok()
+            || name.eq_ignore_ascii_case("localhost")
+            || self.hostnames.iter().any(|h| h.trim().eq_ignore_ascii_case(name))
+    }
+
     pub fn folder_by_slug(&self, slug: &str) -> Option<&Folder> {
         self.folders.iter().find(|f| f.slug() == slug)
     }
@@ -147,6 +168,10 @@ fn apply_env(cfg: &mut Config, env: &HashMap<String, String>) -> Result<EnvLocks
     if let Some(v) = env.get("ZIEWER_ALLOWED_IPS") {
         cfg.allowed_ips = v.split(',').map(str::trim).filter(|s| !s.is_empty()).map(String::from).collect();
         locks.allowed_ips = true;
+    }
+    if let Some(v) = env.get("ZIEWER_HOSTNAMES") {
+        cfg.hostnames = v.split(',').map(str::trim).filter(|s| !s.is_empty()).map(String::from).collect();
+        locks.hostnames = true;
     }
     if let Some(v) = env.get("ZIEWER_FOLDERS") {
         let mut folders = Vec::new();
@@ -235,6 +260,7 @@ mod tests {
             trust_proxy: false,
             allowed_ips: vec!["2.2.2.2".into()],
             folders: vec![Folder { name: "Docs".into(), path: dir.join("docs") }],
+            hostnames: vec![],
         }
     }
 
@@ -340,5 +366,18 @@ mod tests {
         assert!(s.update(|c| c.allowed_ips.push("nope".into())).is_err());
         assert_eq!(s.effective().allowed_ips, vec!["2.2.2.2"]);
         assert_eq!(fs::read(&p).unwrap(), before);
+    }
+
+    #[test]
+    fn host_allowed_rules() {
+        let d = tempfile::tempdir().unwrap();
+        let mut c = base_cfg(d.path());
+        c.hostnames = vec!["docs.example.com".into()];
+        for ok in ["localhost", "localhost:8080", "10.1.2.3:80", "[::1]:8080", "::1", "DOCS.example.com:443"] {
+            assert!(c.host_allowed(ok), "{ok}");
+        }
+        for bad in ["evil.com", "evil.com:8080", "localhost.evil.com", ""] {
+            assert!(!c.host_allowed(bad), "{bad}");
+        }
     }
 }

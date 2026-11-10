@@ -97,12 +97,21 @@ async fn access_mw(State(state): State<AppState>, mut req: Request, next: Next) 
         .get::<ConnectInfo<SocketAddr>>()
         .map(|c| c.0)
         .unwrap_or_else(|| SocketAddr::from(([0, 0, 0, 0], 0)));
-    let (ip, role) = {
+    let host = req.headers().get(http::header::HOST).and_then(|v| v.to_str().ok()).map(str::to_owned);
+    let (ip, role, host_ok) = {
         let store = state.config.read().unwrap();
         let cfg = store.effective();
         let ip = client_ip(peer, req.headers(), cfg.trust_proxy);
-        (ip, classify(ip, cfg))
+        (ip, classify(ip, cfg), host.as_deref().is_none_or(|h| cfg.host_allowed(h)))
     };
+    if !host_ok {
+        tracing::warn!("rejected request for unknown host {host:?} from {ip}");
+        return (
+            StatusCode::MISDIRECTED_REQUEST,
+            "Unknown host name. Add it to `hostnames` in the Ziewer config.",
+        )
+            .into_response();
+    }
     req.extensions_mut().insert(ClientIp(ip));
     req.extensions_mut().insert(role);
 

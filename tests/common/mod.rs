@@ -78,7 +78,11 @@ async fn send(state: &AppState, mut req: Request<Body>, ip: &str) -> (StatusCode
 }
 
 pub async fn get(state: &AppState, path: &str, ip: &str) -> (StatusCode, HeaderMap, String) {
-    let req = Request::get(path).header("host", "localhost").body(Body::empty()).unwrap();
+    get_with_host(state, path, ip, "localhost").await
+}
+
+pub async fn get_with_host(state: &AppState, path: &str, ip: &str, host: &str) -> (StatusCode, HeaderMap, String) {
+    let req = Request::get(path).header("host", host).body(Body::empty()).unwrap();
     send(state, req, ip).await
 }
 
