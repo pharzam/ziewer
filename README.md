@@ -72,6 +72,15 @@ sudo ziewer stop | start
 sudo ziewer uninstall
 ```
 
+### Updating the installed service
+
+After changing the code, rebuild and redeploy in one step:
+
+```sh
+scripts/deploy.sh               # test, build, stop, install, start, show status
+SKIP_TESTS=1 scripts/deploy.sh  # skip the test run
+```
+
 On Linux, logs go to the journal: `journalctl -u ziewer -f`. The config path and the binary path must not contain spaces.
 
 ## Host names
