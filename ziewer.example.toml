@@ -1,0 +1,8 @@
+listen      = "0.0.0.0:8080"
+admin_ip    = "192.168.1.10"
+trust_proxy = false                 # true → client IP from X-Forwarded-For (first entry)
+allowed_ips = ["192.168.1.20", "10.0.0.0/24"]   # single IPs or CIDR
+
+[[folders]]
+name = "Docs"                       # menu label; URL slug derived (lowercase, dashes)
+path = "/home/farzam/docs"
