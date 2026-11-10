@@ -93,35 +93,56 @@ fn ext_lower(p: &FsPath) -> String {
     p.extension().and_then(|e| e.to_str()).unwrap_or("").to_ascii_lowercase()
 }
 
-async fn view(state: &AppState, role: Role, slug: &str, rel: &str, trailing: bool, raw: bool) -> Response {
-    let not_found = || error_page(state, role, StatusCode::NOT_FOUND, "Not found", "That file does not exist.");
-    let root: Option<PathBuf> = state.config.read().unwrap().effective().folder_by_slug(slug).map(|f| f.path.clone());
-    let Some(root) = root.and_then(|r| r.canonicalize().ok()) else { return not_found() };
-    let Some(target) = resolve(&root, rel) else { return not_found() };
+/// What a request resolves to, computed off the async runtime (filesystem walks block).
+enum Outcome {
+    NotFound,
+    Redirect(String),
+    Raw(PathBuf, String),
+    Listing { tree: Vec<NavNode>, entries: Vec<NavNode>, title: String },
+    Page { file: PathBuf, root: PathBuf, tree: Vec<NavNode>, title: String },
+}
+
+fn resolve_outcome(root: Option<PathBuf>, slug: &str, rel: &str, trailing: bool, raw: bool) -> Outcome {
+    let Some(root) = root.and_then(|r| r.canonicalize().ok()) else { return Outcome::NotFound };
+    let Some(target) = resolve(&root, rel) else { return Outcome::NotFound };
 
     if target.is_dir() {
         if !trailing {
-            return Redirect::permanent(&format!("{}/", href(slug, rel, false))).into_response();
+            return Outcome::Redirect(format!("{}/", href(slug, rel, false)));
         }
         let tree = nav(slug, build_tree(&root), rel);
         let title = if rel.is_empty() { slug.to_string() } else { rel.to_string() };
         return match dir_index(&target) {
-            Some(index) => page(state, role, slug, &index, &root, tree, &title).await,
-            None => {
-                let entries = nav(slug, list_dir(&root, &target), "");
-                let ctx = context! { mode => "listing", title, tree, entries, ..base_ctx(state, role, Some(slug)) };
-                render(state, "view.html", ctx)
-            }
+            Some(file) => Outcome::Page { file, root, tree, title },
+            None => Outcome::Listing { entries: nav(slug, list_dir(&root, &target), ""), tree, title },
         };
     }
 
     let ext = ext_lower(&target);
     if raw || (ext != "md" && ext != "html") {
-        return raw_file(&target, &ext).await;
+        return Outcome::Raw(target, ext);
     }
     let tree = nav(slug, build_tree(&root), rel);
     let title = target.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-    page(state, role, slug, &target, &root, tree, &title).await
+    Outcome::Page { file: target, root, tree, title }
+}
+
+async fn view(state: &AppState, role: Role, slug: &str, rel: &str, trailing: bool, raw: bool) -> Response {
+    let root: Option<PathBuf> = state.config.read().unwrap().effective().folder_by_slug(slug).map(|f| f.path.clone());
+    let (slug_owned, rel_owned) = (slug.to_string(), rel.to_string());
+    let outcome = tokio::task::spawn_blocking(move || resolve_outcome(root, &slug_owned, &rel_owned, trailing, raw))
+        .await
+        .unwrap_or(Outcome::NotFound);
+    match outcome {
+        Outcome::NotFound => error_page(state, role, StatusCode::NOT_FOUND, "Not found", "That file does not exist."),
+        Outcome::Redirect(to) => Redirect::permanent(&to).into_response(),
+        Outcome::Raw(path, ext) => raw_file(&path, &ext).await,
+        Outcome::Listing { tree, entries, title } => {
+            let ctx = context! { mode => "listing", title, tree, entries, ..base_ctx(state, role, Some(slug)) };
+            render(state, "view.html", ctx)
+        }
+        Outcome::Page { file, root, tree, title } => page(state, role, slug, &file, &root, tree, &title).await,
+    }
 }
 
 /// Render a `.md` or `.html` file inside the layout.

@@ -2,6 +2,7 @@ listen      = "0.0.0.0:8080"
 admin_ip    = "192.168.1.10"
 trust_proxy = false                 # true → client IP from X-Forwarded-For (rightmost entry)
 allowed_ips = ["192.168.1.20", "10.0.0.0/24"]   # single IPs or CIDR
+# hostnames = ["docs.example.com"]             # names (besides IPs / localhost) the server answers to
 
 [[folders]]
 name = "Docs"                       # menu label; URL slug derived (lowercase, dashes)
