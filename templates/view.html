@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+{%- if mode == "markdown" %}
+<article class="markdown-body card">{{ content|safe }}</article>
+{%- elif mode == "html" %}
+<iframe class="html-frame" src="{{ iframe_src }}" title="{{ title }}"></iframe>
+{%- else %}
+<article class="markdown-body card">
+  <h2>{{ title }}</h2>
+  <ul class="listing">
+    {%- for e in entries %}
+    <li><a href="{{ e.href }}">{{ e.name }}{% if e.is_dir %}/{% endif %}</a></li>
+    {%- else %}
+    <li>No Markdown or HTML files here.</li>
+    {%- endfor %}
+  </ul>
+</article>
+{%- endif %}
+{% endblock %}

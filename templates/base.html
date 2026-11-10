@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% if title %}{{ title }} · {% endif %}Ziewer</title>
+<link rel="stylesheet" href="/_assets/vendor/github-markdown.css">
+<link rel="stylesheet" href="/_assets/app.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/">Ziewer</a>
+  <nav class="menu">
+    {%- for f in folders %}
+    <a href="/f/{{ f.slug }}/"{% if f.active %} class="active" aria-current="page"{% endif %}>{{ f.name }}</a>
+    {%- endfor %}
+  </nav>
+  {%- if is_admin %}
+  <a class="admin-link" href="/admin">Admin</a>
+  {%- endif %}
+</header>
+<div class="layout{% if tree %} with-sidebar{% endif %}">
+  {%- if tree %}
+  <aside class="sidebar">
+    <details open>
+      <summary>Files</summary>
+      <ul class="tree">
+        {%- for n in tree recursive %}
+        <li>
+          {%- if n.is_dir %}
+          <details{% if n.open %} open{% endif %}>
+            <summary>{{ n.name }}</summary>
+            <ul>{{ loop(n.children) }}</ul>
+          </details>
+          {%- else %}
+          <a href="{{ n.href }}"{% if n.active %} class="active"{% endif %}>{{ n.name }}</a>
+          {%- endif %}
+        </li>
+        {%- endfor %}
+      </ul>
+    </details>
+  </aside>
+  {%- endif %}
+  <main class="content">
+    {% block content %}{% endblock %}
+  </main>
+</div>
+<script src="/_assets/vendor/mermaid.min.js"></script>
+<script src="/_assets/app.js"></script>
+</body>
+</html>
