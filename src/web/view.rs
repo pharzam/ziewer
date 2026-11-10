@@ -166,6 +166,21 @@ async fn page(
     }
 }
 
+/// Largest Markdown file accepted by `POST /render`.
+pub const MAX_DROP_BYTES: usize = 5 * 1024 * 1024;
+
+/// Render Markdown sent by the browser (a file dropped on the page) and return the HTML
+/// fragment. Nothing is written to disk.
+pub async fn render_dropped(body: axum::body::Bytes) -> Response {
+    let Ok(text) = String::from_utf8(body.to_vec()) else {
+        return (StatusCode::BAD_REQUEST, "file is not UTF-8 text").into_response();
+    };
+    match tokio::task::spawn_blocking(move || markdown_to_html(&text)).await {
+        Ok(html) => ([(header::CONTENT_TYPE, "text/html; charset=utf-8")], html).into_response(),
+        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "render failed").into_response(),
+    }
+}
+
 async fn raw_file(path: &FsPath, ext: &str) -> Response {
     let Ok(bytes) = tokio::fs::read(path).await else {
         return (StatusCode::NOT_FOUND, "not found").into_response();

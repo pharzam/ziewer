@@ -64,6 +64,10 @@ pub fn router(state: AppState) -> Router {
         .route("/f/{slug}/{*path}", get(view::folder_path))
         .route("/_assets/{*file}", get(assets::asset))
         .route("/request-access", post(gate::request_access))
+        .route(
+            "/render",
+            post(view::render_dropped).layer(axum::extract::DefaultBodyLimit::max(view::MAX_DROP_BYTES)),
+        )
         .route("/admin", get(admin::dashboard))
         .route("/admin/requests/{ip}/approve", post(admin::approve))
         .route("/admin/requests/{ip}/deny", post(admin::deny))

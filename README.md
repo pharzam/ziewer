@@ -6,6 +6,7 @@ Ziewer is a small, self-hosted, read-only viewer for folders of Markdown and HTM
 - **Files drawer:** the **☰ Files** button opens the recursive tree of `.md` and `.html` files in the current folder; pages use the full width.
 - **Markdown:** GitHub-flavoured (tables, task lists, footnotes, heading anchors, syntax highlighting) with ` ```mermaid ` diagrams.
 - **HTML pages:** open as themselves, full page with their own styles and scripts. Elements with `class="mermaid"` are rendered as diagrams. A folder whose index is `index.html` opens that page.
+- **Drag and drop:** drop a local `.md` file onto any viewer page to see it rendered in place. It is sent to the server only to be rendered and is never saved. Max 5 MB; **Close** returns to the page.
 - **Unknown IPs:** they see a 403 page with their IP and a **Request access** button. The admin approves or denies requests at `/admin`.
 - **Self-contained:** a single binary with all assets built in, so no CDN is needed. It can install itself as an OS service.
 

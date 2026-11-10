@@ -103,6 +103,21 @@ pub async fn post_form(
     send(state, b.body(Body::from(body.to_string())).unwrap(), ip).await
 }
 
+pub async fn post_body(
+    state: &AppState,
+    path: &str,
+    ip: &str,
+    content_type: &str,
+    body: Vec<u8>,
+) -> (StatusCode, HeaderMap, String) {
+    let req = Request::post(path)
+        .header("host", "localhost")
+        .header("content-type", content_type)
+        .body(Body::from(body))
+        .unwrap();
+    send(state, req, ip).await
+}
+
 pub fn location(h: &HeaderMap) -> &str {
     h.get("location").unwrap().to_str().unwrap()
 }

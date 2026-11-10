@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="/_assets/vendor/github-markdown.css">
 <link rel="stylesheet" href="/_assets/app.css">
 </head>
-<body>
+<body{% if folders %} data-drop="1"{% endif %}>
 <header class="topbar">
   {%- if tree %}
   <button id="files-toggle" class="files-toggle" type="button" aria-controls="files-drawer" aria-expanded="false">&#9776; Files</button>
